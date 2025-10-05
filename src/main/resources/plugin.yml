@@ -1,0 +1,10 @@
+name: FertileCrops
+version: 1.0
+main: me.FertileCrops.FertileCrops
+api-version: '1.21'
+commands: 
+  fertilecrops:
+    description: FertileCrops management command
+    usage: /<command> <reload|item|withered|cost|rate>
+    permission: fertilecrops.admin
+    permission-message: You don’t have permission to use this command!
