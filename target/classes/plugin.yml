@@ -5,6 +5,7 @@ api-version: '1.21'
 commands: 
   fertilecrops:
     description: FertileCrops management command
-    usage: /<command> <reload|item|withered|cost|rate>
-    permission: fertilecrops.use
+    usage: /<command> <crop|withered|cost|rate|radius|reload>
+    aliases: [fc]
+    permission: fertilecrops.admin
     permission-message: You don’t have permission to use this command!

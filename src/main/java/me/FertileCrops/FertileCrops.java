@@ -11,7 +11,10 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.TabExecutor; 
+import org.bukkit.command.TabCompleter;
 import org.bukkit.ChatColor;
+import java.util.List;
+import java.util.Collections;
 
 
 
@@ -48,14 +51,23 @@ public class FertileCrops extends JavaPlugin {
         loadMessages();
         loadConfigValues();
 
+        getCommand("fertilecrops").setExecutor(this); 
+        getCommand("fertilecrops").setTabCompleter(new FertileCropsCommand(this));
+
         getServer().getPluginManager().registerEvents(new GrowthListener(this), this);
         getLogger().info("FertileCrops v1.0 enabled!");
+        getLogger().info("Allowed crops loaded: " + allowedCrops.entrySet().stream()
+            .filter(Map.Entry::getValue)
+            .map(e -> e.getKey().name())
+            .toList());
     }
 
     public String getMessage(String path, Map<String, String> placeholders) {
         String msg = getMessages().getString(path, "&cMissing message: " + path);
-        for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            msg = msg.replace("%" + entry.getKey() + "%", entry.getValue());
+        if (placeholders != null) {
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                msg = msg.replace("{" + entry.getKey() + "}", entry.getValue());
+            }
         }
         return ChatColor.translateAlternateColorCodes('&', msg);
     }
@@ -72,6 +84,7 @@ public class FertileCrops extends JavaPlugin {
     public Map<Material, Boolean> getAllowedCrops() {
         return Collections.unmodifiableMap(allowedCrops);
     }
+
     private void loadConfigValues() {
         FileConfiguration config = getConfig();
         spreadRadius = config.getInt("spread-radius", 3);
@@ -81,16 +94,20 @@ public class FertileCrops extends JavaPlugin {
         allowedCrops = new HashMap<>();
         if (config.getConfigurationSection("allowed-crops") != null) {
             for (String key : config.getConfigurationSection("allowed-crops").getKeys(false)) {
-                Material mat = Material.matchMaterial(key.toUpperCase());
+                Material mat = Material.getMaterial(key);
                 if (mat != null) {
-                    allowedCrops.put(mat, config.getBoolean("allowed-crops." + key));
+                    allowedCrops.put(mat, config.getBoolean("allowed-crops." + key, true));
                 }
             }
         }
-        getLogger().info("Allowed crops loaded: " + allowedCrops.entrySet().stream()
-            .filter(Map.Entry::getValue)
-            .map(e -> e.getKey().name())
-            .toList());
+    }
+
+    public void reloadMessages() {
+        messagesFile = new File(getDataFolder(), "messages.yml");
+        if (!messagesFile.exists()) {
+            saveResource("messages.yml", false);
+        }
+        messagesConfig = YamlConfiguration.loadConfiguration(messagesFile);
     }
 
     @Override
@@ -110,15 +127,73 @@ public class FertileCrops extends JavaPlugin {
                 }
                 reloadConfig();
                 loadConfigValues();
+                reloadMessages();
                 sender.sendMessage(getMessage("prefix") + getMessage("reload-complete", Map.of("command", label)));
             }
 
-            case "item" -> {
-                if (args.length < 3) {
-                    sender.sendMessage(getMessage("prefix") + getMessage("usage.item", Map.of("command", label)));
+            case "crop" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(getMessage("prefix") + getMessage("usage.crop", Map.of("command", label)));
                     return true;
                 }
-                handleItemCommand(sender, args[1], args[2]);
+
+                String action = args[1].toLowerCase();
+                
+                if (action.equals("list")) {
+                    // Handle listing allowed and not-allowed crops
+                    Map<Material, Boolean> allowedCrops = getAllowedCrops();
+
+                    String allowed = allowedCrops.entrySet().stream()
+                            .filter(Map.Entry::getValue)
+                            .map(e -> e.getKey().name())
+                            .sorted()
+                            .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+
+                    String notAllowed = allowedCrops.entrySet().stream()
+                            .filter(e -> !e.getValue())
+                            .map(e -> e.getKey().name())
+                            .sorted()
+                            .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+
+                    sender.sendMessage(getMessage("prefix") + getMessage(
+                            "crop-list.allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed))
+                    );
+
+                    sender.sendMessage(getMessage("prefix") + getMessage(
+                            "crop-list.not-allowed", Map.of("list", notAllowed.isEmpty() ? "None" : notAllowed))
+                    );
+                } else {
+                    // Handle add/remove as usual
+                    if (args.length < 3) {
+                        sender.sendMessage(getMessage("prefix") + getMessage("usage.crop", Map.of("command", label)));
+                        return true;
+                    }
+                    handleCropCommand(sender, args[1], args[2]);
+                }
+            }
+
+            case "list" -> {
+                Map<Material, Boolean> allowedCrops = getAllowedCrops();
+
+                String allowed = allowedCrops.entrySet().stream()
+                        .filter(Map.Entry::getValue)
+                        .map(e -> e.getKey().name())
+                        .sorted()
+                        .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+
+                String notAllowed = allowedCrops.entrySet().stream()
+                        .filter(e -> !e.getValue())
+                        .map(e -> e.getKey().name())
+                        .sorted()
+                        .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+
+                sender.sendMessage(getMessage("prefix") + getMessage(
+                        "crop-list.allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed))
+                );
+
+                sender.sendMessage(getMessage("prefix") + getMessage(
+                        "crop-list.not-allowed", Map.of("list", notAllowed.isEmpty() ? "None" : notAllowed))
+                );
             }
 
             case "withered" -> {
@@ -144,6 +219,14 @@ public class FertileCrops extends JavaPlugin {
                 }
                 handleRateCommand(sender, args[1]);
             }
+            
+            case "radius" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(getMessage("prefix") + getMessage("usage.radius", Map.of("command", label)));
+                    return true;
+                }
+                handleRadiusCommand(sender, args[1]);
+            }
 
             default -> sender.sendMessage(FertileCrops.getInstance().getMessage("prefix")
                                    + FertileCrops.getInstance().getMessage("unknown-subcommand",
@@ -153,19 +236,21 @@ public class FertileCrops extends JavaPlugin {
         return true;
     }
 
-    private void handleItemCommand(CommandSender sender, String action, String itemName) {
-        Material mat = Material.matchMaterial(itemName.toUpperCase());
+    private void handleCropCommand(CommandSender sender, String action, String CropName) {
+        Material mat = Material.matchMaterial(CropName.toUpperCase());
         if (mat == null) {
             sender.sendMessage(
                 FertileCrops.getInstance().getMessage("prefix")
-                + FertileCrops.getInstance().getMessage("unknown-material", Map.of("material", itemName))
+                + FertileCrops.getInstance().getMessage("unknown-material", Map.of("material", CropName))
             );
             return;
         }
 
         FileConfiguration config = getConfig();
+        List<String> list = config.getStringList("withered-blocks");
+
         if (action.equalsIgnoreCase("add")) {
-            config.set("allowed-crops." + mat.name().toLowerCase(), true);
+            config.set("allowed-crops." + mat.name(), true);
             sender.sendMessage(FertileCrops.getInstance().getMessage("prefix") +
                             FertileCrops.getInstance().getMessage("allowed-add",
                                     Map.of("material", mat.name())));
@@ -175,16 +260,18 @@ public class FertileCrops extends JavaPlugin {
                             FertileCrops.getInstance().getMessage("allowed-remove",
                                     Map.of("material", mat.name())));
         }
+        config.set("withered-blocks", list);
         saveConfig();
         loadConfigValues();
+        plugin.loadConfigValues();
     }
 
-    private void handleWitheredCommand(CommandSender sender, String action, String itemName) {
-        Material mat = Material.matchMaterial(itemName.toUpperCase());
+    private void handleWitheredCommand(CommandSender sender, String action, String CropName) {
+        Material mat = Material.matchMaterial(CropName.toUpperCase());
         if (mat == null) {
             sender.sendMessage(
                 FertileCrops.getInstance().getMessage("prefix")
-                + FertileCrops.getInstance().getMessage("unknown-material", Map.of("material", itemName))
+                + FertileCrops.getInstance().getMessage("unknown-material", Map.of("material", CropName))
             );
             return;
         }
@@ -251,10 +338,53 @@ public class FertileCrops extends JavaPlugin {
         }
     }
 
+    private void handleRadiusCommand(CommandSender sender, String value) {
+        try {
+            int newRadius = Integer.parseInt(value);
+            if (newRadius < 1) {
+                sender.sendMessage(getMessage("prefix") + getMessage("radius-invalid"));
+                return;
+            }
 
+            getConfig().set("spread-radius", newRadius);
+            saveConfig();
+            loadConfigValues();
 
+            sender.sendMessage(getMessage("prefix") + getMessage("radius-set", Map.of("radius", String.valueOf(newRadius))));
+        } catch (NumberFormatException e) {
+            sender.sendMessage(getMessage("prefix") + getMessage("invalid-number", Map.of("value", value)));
+        }
+    }
+
+    public class FertileCropsCommand implements TabCompleter {
+        private final FertileCrops plugin;
+
+        public FertileCropsCommand(FertileCrops plugin) {
+            this.plugin = plugin;
+        }
+
+        @Override
+        public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+            if (args.length == 1) {
+                return List.of("crop", "withered", "cost", "rate", "radius", "reload");
+            }
+
+            if (args.length == 2) {
+                switch (args[0].toLowerCase()) {
+                    case "crop" -> { return List.of("add", "remove", "list"); }
+                    case "withered" -> { return List.of("add", "remove"); }
+                    case "cost" -> { return List.of("<xp>"); }
+                    case "rate" -> { return List.of("<0.0-1.0>"); }
+                    case "radius" -> { return List.of("<blocks>"); }
+                }
+            }
+
+            return Collections.emptyList();
+        }
+    }
 
     public boolean isCropAllowed(Material mat) {
+        plugin.getLogger().info("Checking crop " + mat + ": " + allowedCrops.get(mat));
         return allowedCrops.getOrDefault(mat, false);
     }
 

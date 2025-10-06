@@ -18,12 +18,14 @@ public class GrowthListener implements Listener {
 
     private final FertileCrops plugin;
     private final Random random = new Random();
-    private final List<String> failureBlocks;
+    private List<String> getFailureBlocks() {
+        return plugin.getConfig().getStringList("withered-blocks");
+    }
 
     public GrowthListener(FertileCrops plugin) {
         this.plugin = plugin;
-        this.failureBlocks = plugin.getConfig().getStringList("failure-blocks");
     }
+
 
     @EventHandler
     public void onBoneMealUse(PlayerInteractEvent event) {
@@ -32,12 +34,16 @@ public class GrowthListener implements Listener {
 
         Block block = event.getClickedBlock();
         if (block == null) return;
-
         if (!(block.getBlockData() instanceof Ageable ageable)) return;
-
         if (ageable.getAge() != ageable.getMaximumAge()) return;
 
         Player player = event.getPlayer();
+        Material cropType = block.getType();
+
+        if (!plugin.isCropAllowed(cropType)) {
+            player.sendMessage(ChatColor.RED + "This crop cannot be spread by Fertile Growth!");
+            return;
+        }
 
         int xpCost = plugin.getXpCost();
 
@@ -46,9 +52,7 @@ public class GrowthListener implements Listener {
             return;
         }
 
-        // Deduct XP
         player.giveExp(-xpCost);
-
         event.setCancelled(true);
 
         // Consume bone meal only in Survival/Adventure
@@ -84,7 +88,8 @@ public class GrowthListener implements Listener {
                 if (type == Material.FARMLAND || type == Material.DIRT || type == Material.GRASS_BLOCK) {
                     Block above = target.getRelative(0, 1, 0); // space to plant crop
 
-                    // Failure first
+                    List<String> failureBlocks = getFailureBlocks();
+
                     if (!failureBlocks.isEmpty() && random.nextDouble() > chance) {
                         Material failMat = Material.matchMaterial(
                                 failureBlocks.get(random.nextInt(failureBlocks.size()))
