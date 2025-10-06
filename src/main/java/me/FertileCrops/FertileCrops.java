@@ -56,10 +56,18 @@ public class FertileCrops extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new GrowthListener(this), this);
         getLogger().info("FertileCrops v1.0 enabled!");
-        getLogger().info("Allowed crops loaded: " + allowedCrops.entrySet().stream()
-            .filter(Map.Entry::getValue)
-            .map(e -> e.getKey().name())
-            .toList());
+
+        getLogger().info("Allowed crops: " + allowedCrops.entrySet().stream()
+                .filter(Map.Entry::getValue)
+                .map(e -> e.getKey().name())
+                .sorted()
+                .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b));
+
+        getLogger().info("Spread radius: " + spreadRadius);
+        getLogger().info("Success chance (rate): " + successChance);
+
+        List<String> withered = getConfig().getStringList("withered-blocks");
+        getLogger().info("Withered blocks: " + (withered.isEmpty() ? "None" : String.join(", ", withered)));
     }
 
     public String getMessage(String path, Map<String, String> placeholders) {
@@ -104,10 +112,33 @@ public class FertileCrops extends JavaPlugin {
 
     public void reloadMessages() {
         messagesFile = new File(getDataFolder(), "messages.yml");
+
+        // Load default messages from the jar
+        FileConfiguration defaultConfig = YamlConfiguration.loadConfiguration(
+            new InputStreamReader(getResource("messages.yml"))
+        );
+
+        // If the file doesn't exist, create it
         if (!messagesFile.exists()) {
             saveResource("messages.yml", false);
         }
+
+        // Load existing messages
         messagesConfig = YamlConfiguration.loadConfiguration(messagesFile);
+
+        // Merge missing keys from defaultConfig into messagesConfig
+        for (String key : defaultConfig.getKeys(true)) {
+            if (!messagesConfig.contains(key)) {
+                messagesConfig.set(key, defaultConfig.get(key));
+            }
+        }
+
+        // Save merged config
+        try {
+            messagesConfig.save(messagesFile);
+        } catch (IOException e) {
+            getLogger().warning("Could not save messages.yml: " + e.getMessage());
+        }
     }
 
     @Override
@@ -138,9 +169,9 @@ public class FertileCrops extends JavaPlugin {
                 }
 
                 String action = args[1].toLowerCase();
-                
+
                 if (action.equals("list")) {
-                    // Handle listing allowed and not-allowed crops
+                    // Only show allowed crops
                     Map<Material, Boolean> allowedCrops = getAllowedCrops();
 
                     String allowed = allowedCrops.entrySet().stream()
@@ -149,19 +180,7 @@ public class FertileCrops extends JavaPlugin {
                             .sorted()
                             .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
 
-                    String notAllowed = allowedCrops.entrySet().stream()
-                            .filter(e -> !e.getValue())
-                            .map(e -> e.getKey().name())
-                            .sorted()
-                            .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
-
-                    sender.sendMessage(getMessage("prefix") + getMessage(
-                            "crop-list.allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed))
-                    );
-
-                    sender.sendMessage(getMessage("prefix") + getMessage(
-                            "crop-list.not-allowed", Map.of("list", notAllowed.isEmpty() ? "None" : notAllowed))
-                    );
+                    sender.sendMessage(getMessage("crop-list.allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed)));
                 } else {
                     // Handle add/remove as usual
                     if (args.length < 3) {
@@ -172,36 +191,30 @@ public class FertileCrops extends JavaPlugin {
                 }
             }
 
-            case "list" -> {
-                Map<Material, Boolean> allowedCrops = getAllowedCrops();
-
-                String allowed = allowedCrops.entrySet().stream()
-                        .filter(Map.Entry::getValue)
-                        .map(e -> e.getKey().name())
-                        .sorted()
-                        .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
-
-                String notAllowed = allowedCrops.entrySet().stream()
-                        .filter(e -> !e.getValue())
-                        .map(e -> e.getKey().name())
-                        .sorted()
-                        .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
-
-                sender.sendMessage(getMessage("prefix") + getMessage(
-                        "crop-list.allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed))
-                );
-
-                sender.sendMessage(getMessage("prefix") + getMessage(
-                        "crop-list.not-allowed", Map.of("list", notAllowed.isEmpty() ? "None" : notAllowed))
-                );
-            }
-
             case "withered" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(getMessage("prefix") + getMessage("usage.withered", Map.of("command", label)));
+                    return true;
+                }
+
+                String action = args[1].toLowerCase();
+
+                if (action.equals("list")) {
+                    List<String> withered = getConfig().getStringList("withered-blocks");
+                    String list = withered.stream()
+                            .sorted()
+                            .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+
+                    sender.sendMessage(getMessage("crop-list.not-allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed)));
+                    return true;
+                }
+
                 if (args.length < 3) {
                     sender.sendMessage(getMessage("prefix") + getMessage("usage.withered", Map.of("command", label)));
                     return true;
                 }
-                handleWitheredCommand(sender, args[1], args[2]);
+
+                handleWitheredCommand(sender, action, args[2]);
             }
 
             case "cost" -> {
@@ -263,7 +276,6 @@ public class FertileCrops extends JavaPlugin {
         config.set("withered-blocks", list);
         saveConfig();
         loadConfigValues();
-        plugin.loadConfigValues();
     }
 
     private void handleWitheredCommand(CommandSender sender, String action, String CropName) {
@@ -372,7 +384,7 @@ public class FertileCrops extends JavaPlugin {
             if (args.length == 2) {
                 switch (args[0].toLowerCase()) {
                     case "crop" -> { return List.of("add", "remove", "list"); }
-                    case "withered" -> { return List.of("add", "remove"); }
+                    case "withered" -> { return List.of("add", "remove", "list"); }
                     case "cost" -> { return List.of("<xp>"); }
                     case "rate" -> { return List.of("<0.0-1.0>"); }
                     case "radius" -> { return List.of("<blocks>"); }
@@ -384,7 +396,6 @@ public class FertileCrops extends JavaPlugin {
     }
 
     public boolean isCropAllowed(Material mat) {
-        plugin.getLogger().info("Checking crop " + mat + ": " + allowedCrops.get(mat));
         return allowedCrops.getOrDefault(mat, false);
     }
 

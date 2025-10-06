@@ -9,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import java.util.Map;
 
 
 import java.util.List;
@@ -20,6 +21,14 @@ public class GrowthListener implements Listener {
     private final Random random = new Random();
     private List<String> getFailureBlocks() {
         return plugin.getConfig().getStringList("withered-blocks");
+    }
+
+    private String getMessage(String path, java.util.Map<String, String> placeholders) {
+        return plugin.getMessage(path, placeholders);
+    }
+
+    private String getMessage(String path) {
+        return plugin.getMessage(path);
     }
 
     public GrowthListener(FertileCrops plugin) {
@@ -40,28 +49,31 @@ public class GrowthListener implements Listener {
         Player player = event.getPlayer();
         Material cropType = block.getType();
 
-        if (!plugin.isCropAllowed(cropType)) {
-            player.sendMessage(ChatColor.RED + "This crop cannot be spread by Fertile Growth!");
-            return;
-        }
-
-        int xpCost = plugin.getXpCost();
-
-        if (player.getTotalExperience() < xpCost) {
-            player.sendMessage(ChatColor.RED + "Not enough XP to use Fertile Growth!");
-            return;
-        }
-
-        player.giveExp(-xpCost);
-        event.setCancelled(true);
-
-        // Consume bone meal only in Survival/Adventure
         if (player.getGameMode() != GameMode.CREATIVE) {
+            if (!plugin.isCropAllowed(cropType)) {
+                player.sendMessage(FertileCrops.getInstance().getMessage("prefix") +
+                                FertileCrops.getInstance().getMessage("not-allowed-crop"));
+                return;
+            }
+
+            int xpCost = plugin.getXpCost();
+            if (player.getTotalExperience() < xpCost) {
+                player.sendMessage(FertileCrops.getInstance().getMessage("prefix") +
+                                FertileCrops.getInstance().getMessage("not-enough-xp",
+                                    Map.of("amount", String.valueOf(xpCost))));
+                return;
+            }
+
+            // Deduct XP
+            player.giveExp(-xpCost);
+
+            // Consume bone meal
             ItemStack boneMeal = event.getItem();
             boneMeal.setAmount(boneMeal.getAmount() - 1);
         }
 
-        // Spread crops
+        // Cancel the event and spread crops for all modes
+        event.setCancelled(true);
         spreadNearby(block, player);
     }
 
@@ -74,7 +86,6 @@ public class GrowthListener implements Listener {
             return;
         }
 
-        plugin.getLogger().info("Fertile growth triggered at " + origin.getLocation());
         Block originBlock = origin.getRelative(0, -1, 0); // block beneath the crop
 
         for (int dx = -radius; dx <= radius; dx++) {
@@ -83,7 +94,6 @@ public class GrowthListener implements Listener {
                 Block target = originBlock.getRelative(dx, 0, dz);
                 Material type = target.getType();
 
-                plugin.getLogger().info("Checking block at " + target.getLocation() + " of type " + type);
 
                 if (type == Material.FARMLAND || type == Material.DIRT || type == Material.GRASS_BLOCK) {
                     Block above = target.getRelative(0, 1, 0); // space to plant crop
@@ -96,7 +106,6 @@ public class GrowthListener implements Listener {
                         );
                         if (failMat != null) target.setType(failMat);
                         player.spawnParticle(Particle.CLOUD, above.getLocation().add(0.5, 1, 0.5), 5, 0.2, 0.2, 0.2, 0.01);
-                        plugin.getLogger().info("Failure: converted block to " + failMat);
                         continue;
                     }
 
@@ -110,7 +119,6 @@ public class GrowthListener implements Listener {
                         above.setBlockData(newCrop);
                     }
                     player.spawnParticle(Particle.HAPPY_VILLAGER, above.getLocation().add(0.5, 0.5, 0.5), 5);
-                    plugin.getLogger().info("Success: planted " + origin.getType() + " at " + above.getLocation());
                 }
             }
         }
