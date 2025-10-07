@@ -14,7 +14,7 @@ rate-invalid: "&cRate must be between &f0.0 &cand &f1.0!"
 rate-set: "&aSuccess chance set to &f{rate}"
 radius-set: "&aSpread radius set to &f{radius}"
 radius-invalid: "&cRadius must be at least 1 block!"
-not-allowed-crop: "&cThis crop cannot be spread by Fertile Growth!"
+not-allowed-crop: "&cThis crop cannot be spread!"
 not-enough-xp: "&cNot enough XP! Requires {amount} XP."
 
 
@@ -29,3 +29,17 @@ usage:
 crop-list:
  allowed: "&aAllowed: &f{list}"
  not-allowed: "&6Withered blocks: &f{list}"
+
+help:
+  header: "&6============ FertileCrops ============"
+  crop-add: "&e/fc crop add <MAT> &f- Allow a crop to spread"
+  crop-remove: "&e/fc crop remove <MAT> &f- Disallow a crop"
+  crop-list: "&e/fc crop list &f- List all allowed crops"
+  withered-add: "&e/fc withered add <MAT> &f- Add a withered block"
+  withered-remove: "&e/fc withered remove <MAT> &f- Remove a withered block"
+  withered-list: "&e/fc withered list &f- List all withered blocks"
+  cost: "&e/fc cost <amount> &f- Set XP cost per spread"
+  rate: "&e/fc rate <0.0-1.0> &f- Set success chance"
+  radius: "&e/fc radius <blocks> &f- Set spread radius"
+  reload: "&e/fc reload &f- Reload config and messages"
+  help: "&e/fc help &f- Show this help menu"

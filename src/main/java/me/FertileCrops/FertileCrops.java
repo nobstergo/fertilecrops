@@ -15,6 +15,8 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.ChatColor;
 import java.util.List;
 import java.util.Collections;
+import java.io.InputStreamReader;
+import java.io.IOException;
 
 
 
@@ -205,7 +207,9 @@ public class FertileCrops extends JavaPlugin {
                             .sorted()
                             .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
 
-                    sender.sendMessage(getMessage("crop-list.not-allowed", Map.of("list", allowed.isEmpty() ? "None" : allowed)));
+                    sender.sendMessage(getMessage("prefix") + getMessage(
+                            "crop-list.not-allowed", Map.of("list", list.isEmpty() ? "None" : list))
+                    );
                     return true;
                 }
 
@@ -241,6 +245,22 @@ public class FertileCrops extends JavaPlugin {
                 handleRadiusCommand(sender, args[1]);
             }
 
+            case "help" -> {
+                sender.sendMessage(getMessage("help.header"));
+                sender.sendMessage(getMessage("help.crop-add"));
+                sender.sendMessage(getMessage("help.crop-remove"));
+                sender.sendMessage(getMessage("help.crop-list"));
+                sender.sendMessage(getMessage("help.withered-add"));
+                sender.sendMessage(getMessage("help.withered-remove"));
+                sender.sendMessage(getMessage("help.withered-list"));
+                sender.sendMessage(getMessage("help.cost"));
+                sender.sendMessage(getMessage("help.rate"));
+                sender.sendMessage(getMessage("help.radius"));
+                sender.sendMessage(getMessage("help.reload"));
+                sender.sendMessage(getMessage("help.help"));
+                return true;
+            }
+
             default -> sender.sendMessage(FertileCrops.getInstance().getMessage("prefix")
                                    + FertileCrops.getInstance().getMessage("unknown-subcommand",
                                          Map.of("subcommand", args[0])));
@@ -268,7 +288,7 @@ public class FertileCrops extends JavaPlugin {
                             FertileCrops.getInstance().getMessage("allowed-add",
                                     Map.of("material", mat.name())));
         } else if (action.equalsIgnoreCase("remove")) {
-            config.set("allowed-crops." + mat.name().toLowerCase(), false);
+            config.set("allowed-crops." + mat.name(), false); 
             sender.sendMessage(FertileCrops.getInstance().getMessage("prefix") +
                             FertileCrops.getInstance().getMessage("allowed-remove",
                                     Map.of("material", mat.name())));

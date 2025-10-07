@@ -64,15 +64,12 @@ public class GrowthListener implements Listener {
                 return;
             }
 
-            // Deduct XP
             player.giveExp(-xpCost);
 
-            // Consume bone meal
             ItemStack boneMeal = event.getItem();
             boneMeal.setAmount(boneMeal.getAmount() - 1);
         }
 
-        // Cancel the event and spread crops for all modes
         event.setCancelled(true);
         spreadNearby(block, player);
     }
@@ -90,13 +87,13 @@ public class GrowthListener implements Listener {
 
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                if (dx*dx + dz*dz > radius*radius) continue; // skip outside circle
+                if (dx*dx + dz*dz > radius*radius) continue; 
                 Block target = originBlock.getRelative(dx, 0, dz);
                 Material type = target.getType();
 
 
                 if (type == Material.FARMLAND || type == Material.DIRT || type == Material.GRASS_BLOCK) {
-                    Block above = target.getRelative(0, 1, 0); // space to plant crop
+                    Block above = target.getRelative(0, 1, 0); 
 
                     List<String> failureBlocks = getFailureBlocks();
 
@@ -109,10 +106,8 @@ public class GrowthListener implements Listener {
                         continue;
                     }
 
-                    // Success → ensure farmland
                     if (type != Material.FARMLAND) target.setType(Material.FARMLAND);
 
-                    // Plant crop
                     above.setType(origin.getType());
                     if (above.getBlockData() instanceof Ageable newCrop) {
                         newCrop.setAge(newCrop.getMaximumAge());

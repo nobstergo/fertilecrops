@@ -1,10 +1,11 @@
-# FertileCrops Configuration
-
-# Radius in blocks around the fertilized crop to spread
+# Radius in blocks around the crop to spread
 spread-radius: 3
 
 # Chance (0.0 - 1.0) that a new crop successfully grows
 success-chance: 0.7
+
+# XP cost per spread
+xp-cost: 1
 
 # Blocks that failed attempts can turn into
 withered-blocks:
@@ -13,16 +14,13 @@ withered-blocks:
   - SAND
 
 # Allowed crops/seeds for Fertile Growth
-# Only crops in this list can spread; admins can toggle more
 allowed-crops:
-  wheat: true
-  carrot: true
-  potato: true
-  beetroot: true
-  pumpkin: false
-  melon: false
-  cocoa: false
-  sugar_cane: false
+  WHEAT: true
+  CARROT: true
+  POTATO: true
+  BEETROOT: true
+  PUMPKIN: false
+  MELON: false
+  COCOA: false
+  SUGAR_CANE: false
 
-# XP cost per Fertile Growth activation
-xp-cost: 1
