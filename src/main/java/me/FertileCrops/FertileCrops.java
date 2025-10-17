@@ -57,7 +57,7 @@ public class FertileCrops extends JavaPlugin {
         getCommand("fertilecrops").setTabCompleter(new FertileCropsCommand(this));
 
         getServer().getPluginManager().registerEvents(new GrowthListener(this), this);
-        getLogger().info("FertileCrops v1.0 enabled!");
+        getLogger().info("FertileCrops enabled!");
 
         getLogger().info("Allowed crops: " + allowedCrops.entrySet().stream()
                 .filter(Map.Entry::getValue)
@@ -88,7 +88,7 @@ public class FertileCrops extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        getLogger().info("FertileCrops v1.0 disabled!");
+        getLogger().info("FertileCrops disabled!");
     }
 
     public Map<Material, Boolean> getAllowedCrops() {
