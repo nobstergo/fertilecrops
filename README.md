@@ -4,6 +4,9 @@
 
 ---
 
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/orx1yQuhm6k" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+
 ## Features
 
 - Spread crops nearby using bone meal.
@@ -37,3 +40,5 @@ All commands use the `/fc` or `/fertilecrops` prefix.
 | `/fc radius <blocks>` | Sets the spread radius for crop spread. |
 | `/fc reload` | Reloads plugin config and messages. |
 | `/fc help` | Shows all commands with their description. |
+
+You can find the MATERIAL_ID here https://minecraft-ids.grahamedgecombe.com/
