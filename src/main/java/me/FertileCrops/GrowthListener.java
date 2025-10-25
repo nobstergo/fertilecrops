@@ -114,11 +114,10 @@ public class GrowthListener implements Listener {
                         above.setBlockData(newCrop);
                     }
                     Particle happyParticle;
-
                     try {
-                        happyParticle = Particle.valueOf("HAPPY_VILLAGER"); 
+                        happyParticle = Particle.valueOf("HAPPY_VILLAGER");
                     } catch (IllegalArgumentException e) {
-                        happyParticle = Particle.VILLAGER_HAPPY; 
+                        happyParticle = Particle.valueOf("VILLAGER_HAPPY");
                     }
 
                     player.spawnParticle(happyParticle, above.getLocation().add(0.5, 0.5, 0.5), 5);
